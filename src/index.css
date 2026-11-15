@@ -1,0 +1,454 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Inter:Regular";
+  src: url("https://static.figma.com/font/Inter_1") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+}
+@font-face {
+  font-family: "Inter:Light";
+  src: url("https://static.figma.com/font/Inter_1") format("woff2");
+  font-style: normal;
+  font-weight: 300;
+}
+@font-face {
+  font-family: "Inter:Medium";
+  src: url("https://static.figma.com/font/Inter_1") format("woff2");
+  font-style: normal;
+  font-weight: 500;
+}
+@font-face {
+  font-family: "Inter:Semi Bold";
+  src: url("https://static.figma.com/font/Inter_1") format("woff2");
+  font-style: normal;
+  font-weight: 600;
+}
+@font-face {
+  font-family: "Inter:Bold";
+  src: url("https://static.figma.com/font/Inter_1") format("woff2");
+  font-style: normal;
+  font-weight: 700;
+}
+@font-face {
+  font-family: "Inter:Extra Bold";
+  src: url("https://static.figma.com/font/Inter_1") format("woff2");
+  font-style: normal;
+  font-weight: 800;
+}
+@font-face {
+  font-family: "Jost:Black";
+  src: url("https://static.figma.com/font/Jost_wght__1") format("woff2");
+  font-style: normal;
+  font-weight: 900;
+}
+
+@theme {
+  --font-sans: "Inter:Regular", Inter, sans-serif;
+  --font-jost: "Jost:Black", Jost, sans-serif;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.map-range {
+  position: absolute;
+  inset: 11px 0 auto;
+  width: 100%;
+  height: 18px;
+  margin: 0;
+  appearance: none;
+  background: transparent;
+  pointer-events: none;
+}
+.map-range::-webkit-slider-thumb {
+  width: 15px;
+  height: 15px;
+  appearance: none;
+  border: 0;
+  border-radius: 999px;
+  background: #bc90c7;
+  cursor: grab;
+  pointer-events: auto;
+}
+.map-range::-moz-range-thumb {
+  width: 15px;
+  height: 15px;
+  border: 0;
+  border-radius: 999px;
+  background: #bc90c7;
+  cursor: grab;
+  pointer-events: auto;
+}
+.map-range::-webkit-slider-runnable-track,
+.map-range::-moz-range-track {
+  background: transparent;
+}
+
+@layer base {
+  body {
+    min-width: 320px;
+    min-height: 100dvh;
+    background: #f4f1f5;
+    color: #161219;
+    font-family: "Inter:Regular", Inter, sans-serif;
+  }
+  #root {
+    width: 100%;
+    max-width: 390px;
+    min-height: 100dvh;
+    margin: 0 auto;
+    background: white;
+    box-shadow: 0 0 32px rgb(22 18 25 / 8%);
+  }
+  button {
+    cursor: pointer;
+  }
+  h1 {
+    font-family: "Inter:Semi Bold", Inter, sans-serif;
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: -0.6px;
+    line-height: 1.2;
+  }
+}
+
+@layer components {
+  .auth-page {
+    display: flex;
+    min-height: 100dvh;
+    flex-direction: column;
+    justify-content: flex-start;
+    padding: 40px 24px 0;
+  }
+  .auth-content {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    gap: 40px;
+  }
+  .muted {
+    color: #655e69;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .field {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    gap: 8px;
+    font-family: "Inter:Medium", Inter, sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .field > input,
+  .input-wrap,
+  .field > select {
+    display: flex;
+    height: 52px;
+    width: 100%;
+    align-items: center;
+    border: 1px solid #ddd7e2;
+    border-radius: 10px;
+    background: #fcfbfd;
+    padding: 0 16px;
+    font-family: "Inter:Regular", Inter, sans-serif;
+    font-weight: 400;
+    outline: none;
+  }
+  .field input:focus,
+  .field select:focus,
+  .input-wrap:focus-within {
+    border-color: #a100ff;
+    box-shadow: 0 0 0 3px rgb(161 0 255 / 10%);
+  }
+  .host-property-form .field {
+    gap: 6px;
+    font-size: 12px;
+  }
+  .host-property-form .field > input,
+  .host-property-form .field > select {
+    height: 42px;
+    font-size: 12px;
+  }
+  .announcement-form .field {
+    gap: 6px;
+    font-size: 12px;
+  }
+  .announcement-form .field > input,
+  .announcement-form .field > select {
+    height: 44px;
+    font-size: 13px;
+  }
+  .announcement-form textarea {
+    width: 100%;
+    min-height: 100px;
+    resize: vertical;
+    border: 1px solid #ddd7e2;
+    border-radius: 10px;
+    background: #fcfbfd;
+    padding: 12px;
+    font-family: "Inter:Regular", Inter, sans-serif;
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.5;
+    outline: none;
+  }
+  .announcement-form textarea:focus {
+    border-color: #a100ff;
+    box-shadow: 0 0 0 3px rgb(161 0 255 / 10%);
+  }
+  .announcement-form textarea.additional-costs {
+    min-height: 66px;
+    font-size: 11px;
+    line-height: 1.35;
+  }
+  .proposal-form .field {
+    gap: 4px;
+    font-size: 10px;
+  }
+  .proposal-form .field > input,
+  .proposal-form .field > select {
+    height: 34px;
+    border-radius: 8px;
+    padding: 0 9px;
+    font-size: 11px;
+  }
+  .input-wrap input {
+    min-width: 0;
+    flex: 1;
+    background: transparent;
+    outline: none;
+  }
+  .primary-btn {
+    display: flex;
+    height: 52px;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: #a100ff;
+    font-family: "Inter:Semi Bold", Inter, sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: white;
+    transition:
+      transform 0.15s,
+      background 0.15s;
+  }
+  .primary-btn:hover {
+    background: #8e00e5;
+  }
+  .primary-btn:active {
+    transform: scale(0.985);
+  }
+  .notice {
+    border-radius: 10px;
+    background: #f4e9fb;
+    padding: 10px 12px;
+    color: #4e1e79;
+    font-size: 12px;
+  }
+  .choice {
+    min-height: 46px;
+    border: 1px solid #ddd7e2;
+    border-radius: 10px;
+    background: #fcfbfd;
+    padding: 8px;
+    font-size: 12px;
+  }
+  .choice-active {
+    border-color: #a100ff;
+    background: #a100ff;
+    color: white;
+  }
+  .filter-tag {
+    display: flex;
+    height: 18px;
+    align-items: center;
+    gap: 4px;
+    border-radius: 999px;
+    background: #dcb7e4;
+    padding: 0 12px;
+    font-size: 10px;
+  }
+  .filter-tag > button {
+    display: inline-grid;
+    height: 12px;
+    width: 14px;
+    cursor: pointer;
+    place-items: center;
+    border-radius: 999px;
+    background: #f7f7f7;
+    color: #4e1e79;
+    line-height: 1;
+  }
+  .filter-tag > button:active {
+    transform: scale(0.9);
+  }
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    border-bottom: 1px solid #e7e2e9;
+    padding-bottom: 20px;
+  }
+  .filter-group h2 {
+    font-family: "Inter:Semi Bold", Inter, sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .filter-group small {
+    color: #706a73;
+    font-size: 10px;
+  }
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .filter-chip {
+    display: flex;
+    height: 34px;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border: 0.6px solid #d9d3dc;
+    border-radius: 999px;
+    background: #f8f6f9;
+    padding: 0 13px;
+    color: #171219;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+  .filter-chip.selected {
+    border-color: #dcb7e4;
+    background: #dcb7e4;
+    color: #4e1e79;
+    font-family: "Inter:Medium", Inter, sans-serif;
+    font-weight: 500;
+  }
+  .profile-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .profile-field input,
+  .profile-field select,
+  .profile-field textarea {
+    width: 100%;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: #d9d3dc;
+    padding: 5px 12px;
+    font-family: "Inter:Regular", Inter, sans-serif;
+    font-size: 12px;
+    font-weight: 400;
+    outline: none;
+  }
+  .profile-field textarea {
+    border-radius: 4px;
+    resize: vertical;
+  }
+  .profile-control {
+    display: flex;
+    min-height: 24px;
+    width: 100%;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    background: #d9d3dc;
+    padding: 0 10px 0 12px;
+  }
+  .profile-control:focus-within {
+    border-color: #a100ff;
+    background: #fcfbfd;
+  }
+  .profile-control .profile-control-input {
+    min-width: 0;
+    min-height: 22px;
+    flex: 1;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    padding: 0;
+    outline: none;
+  }
+  .profile-control .profile-control-input:disabled {
+    color: #171219;
+    opacity: 1;
+  }
+  .profile-control .profile-control-input::placeholder {
+    color: #a39ca8;
+  }
+  .profile-control-icon {
+    height: 16px;
+    width: 16px;
+    flex: none;
+    color: #706a73;
+  }
+  .profile-role-picker legend {
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 500;
+  }
+  .profile-role-option {
+    position: relative;
+    display: grid;
+    min-height: 58px;
+    place-items: center;
+    border: 1px solid #ddd7e2;
+    border-radius: 10px;
+    background: #fcfbfd;
+    padding: 8px;
+    color: #171219;
+    font-size: 16px;
+    font-weight: 500;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .profile-role-option input {
+    position: absolute;
+    inset: 0;
+    height: 100%;
+    width: 100%;
+    cursor: pointer;
+    opacity: 0;
+  }
+  .profile-role-option.selected {
+    border-color: #a100ff;
+    background: #a100ff;
+    color: white;
+  }
+  .profile-role-option:has(input:focus-visible) {
+    outline: 3px solid rgb(161 0 255 / 22%);
+    outline-offset: 2px;
+  }
+  .choice.profile-choice {
+    min-height: 24px;
+    height: 24px;
+    padding: 2px 16px;
+    font-size: 12px;
+  }
+  .profile-field input:not(:disabled):focus,
+  .profile-field textarea:not(:disabled):focus,
+  .profile-field select:not(:disabled):focus {
+    border-color: #a100ff;
+    background: #fcfbfd;
+  }
+  .profile-pill {
+    border-radius: 999px;
+    background: #dcb7e4;
+    padding: 5px 18px;
+    color: #4e1e79;
+    font-size: 11px;
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "description": "A plataforma permite fazer login, criar uma conta, explorar a tela inicial com filtros e editar o perfil para personalizar a experiência.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
