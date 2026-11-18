@@ -93,25 +93,36 @@ function Logo({ compact = false }: { compact?: boolean }) {
 
 function ProfileRoleSelector({
   label,
-  role,
-  setRole,
+  roles,
+  setRoles,
 }: {
   label?: string;
-  role: ProfileRole;
-  setRole: (role: ProfileRole) => void;
+  roles: ProfileRole[];
+  setRoles: (roles: ProfileRole[]) => void;
 }) {
+  const toggleRole = (option: ProfileRole) => {
+    if (option === "Locador") {
+      setRoles(roles.includes(option) ? [] : [option]);
+      return;
+    }
+    const withoutLandlord = roles.filter((role) => role !== "Locador");
+    setRoles(withoutLandlord.includes(option)
+      ? withoutLandlord.filter((role) => role !== option)
+      : [...withoutLandlord, option]);
+  };
   return (
     <fieldset className="profile-role-picker">
       {label && <legend>{label}</legend>}
       <div className="grid grid-cols-2 gap-2">
         {profileRoles.map((option) => (
-          <label key={option} className={`profile-role-option ${role === option ? "selected" : ""}`}>
+          <label key={option} className={`profile-role-option ${roles.includes(option) ? "selected" : ""}`}>
             <input
-              type="radio"
-              name="profile-role"
+              type="checkbox"
+              name="profile-roles"
               value={option}
-              checked={role === option}
-              onChange={() => setRole(option)}
+              checked={roles.includes(option)}
+              onChange={() => toggleRole(option)}
+              aria-label={option}
             />
             <span>{option}</span>
           </label>
@@ -127,35 +138,49 @@ function PasswordField({
   value,
   onChange,
   minLength,
+  id = "password-field",
+  error,
 }: {
   label?: string;
   placeholder?: string;
   value?: string;
   onChange?: (value: string) => void;
   minLength?: number;
+  id?: string;
+  error?: string;
 }) {
   const [show, setShow] = useState(false);
   return (
-    <label className="field">
-      <span>{label}</span>
-      <span className="input-wrap">
-        <input type={show ? "text" : "password"} placeholder={placeholder} value={value} onChange={(event) => onChange?.(event.target.value)} minLength={minLength} required />
-        <button
-          type="button"
-          aria-label={show ? "Ocultar senha" : "Mostrar senha"}
-          onClick={() => setShow(!show)}
-        >
-          <img src={`${A}/29898.svg`} className="size-5" alt="" />
-        </button>
-      </span>
-    </label>
+    <div className="space-y-1.5">
+      <label className={`field ${error ? "field-invalid" : ""}`}>
+        <span>{label}</span>
+        <span className="input-wrap">
+          <input id={id} type={show ? "text" : "password"} placeholder={placeholder} value={value} onChange={(event) => onChange?.(event.target.value)} minLength={minLength} required aria-invalid={error ? "true" : undefined} aria-describedby={error ? `${id}-error` : undefined} />
+          <button
+            type="button"
+            aria-label={show ? "Ocultar senha" : "Mostrar senha"}
+            onClick={() => setShow(!show)}
+          >
+            <img src={`${A}/29898.svg`} className="size-5" alt="" />
+          </button>
+        </span>
+      </label>
+      {error && <p id={`${id}-error`} className="field-error" role="alert">{error}</p>}
+    </div>
   );
 }
 
+function InlineFieldError({ id, message }: { id: string; message?: string }) {
+  return message ? <p id={id} className="field-error" role="alert">{message}</p> : null;
+}
+
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 function Login({ go }: { go: (screen: Screen) => void }) {
-  const [message, setMessage] = useState("");
+  const [notice, setNotice] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const { users, setUser } = useContext(UserContext);
   const loginAs = (user: MockUser) => {
     setUser(user);
@@ -163,15 +188,26 @@ function Login({ go }: { go: (screen: Screen) => void }) {
   };
   function submit(event: FormEvent) {
     event.preventDefault();
-    const user = users.find((account) => account.email.toLowerCase() === email.trim().toLowerCase());
+    setNotice("");
+    const nextErrors: { email?: string; password?: string } = {};
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedEmail) nextErrors.email = "Informe seu e-mail.";
+    else if (!emailPattern.test(normalizedEmail)) nextErrors.email = "Digite um e-mail válido.";
+    if (!password) nextErrors.password = "Informe sua senha.";
+    if (Object.keys(nextErrors).length) {
+      setErrors(nextErrors);
+      return;
+    }
+    const user = users.find((account) => account.email.toLowerCase() === normalizedEmail);
     if (!user) {
-      setMessage("E-mail não encontrado na demonstração.");
+      setErrors({ email: "Não encontramos uma conta com esse e-mail." });
       return;
     }
     if (user.password && user.password !== password) {
-      setMessage("Senha incorreta.");
+      setErrors({ password: "Senha incorreta." });
       return;
     }
+    setErrors({});
     loginAs(user);
   }
   return (
@@ -184,24 +220,32 @@ function Login({ go }: { go: (screen: Screen) => void }) {
             Entre para encontrar seu lugar e quem vai compartilhar essa nova fase com você.
           </p>
         </div>
-        <form className="space-y-6" onSubmit={submit}>
-          <label className="field">
-            <span>E-mail</span>
-            <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Digite seu e-mail" required />
-          </label>
+        <form className="space-y-6" onSubmit={submit} noValidate>
+          <div className="space-y-1.5">
+            <label className={`field ${errors.email ? "field-invalid" : ""}`}>
+              <span>E-mail</span>
+              <input id="login-email" type="email" autoComplete="email" value={email} onChange={(event) => { setEmail(event.target.value); setErrors((current) => ({ ...current, email: undefined })); setNotice(""); }} placeholder="Digite seu e-mail" required aria-invalid={errors.email ? "true" : undefined} aria-describedby={errors.email ? "login-email-error" : undefined} />
+            </label>
+            <InlineFieldError id="login-email-error" message={errors.email} />
+          </div>
           <div className="space-y-2">
-            <PasswordField value={password} onChange={setPassword} />
+            <PasswordField id="login-password" value={password} onChange={(value) => { setPassword(value); setErrors((current) => ({ ...current, password: undefined })); setNotice(""); }} error={errors.password} />
             <button
               type="button"
               className="ml-auto block h-8 text-sm font-medium text-[#7501dd]"
-              onClick={() => setMessage("Enviamos as instruções de recuperação para o seu e-mail.")}
+              onClick={() => {
+                const normalizedEmail = email.trim();
+                if (!normalizedEmail) setErrors({ email: "Informe seu e-mail para recuperar a senha." });
+                else if (!emailPattern.test(normalizedEmail)) setErrors({ email: "Digite um e-mail válido." });
+                else setNotice("As instruções de recuperação foram simuladas para este e-mail.");
+              }}
             >
               Esqueci minha senha
             </button>
           </div>
-          {message && (
+          {notice && (
             <p className="notice" role="status">
-              {message}
+              {notice}
             </p>
           )}
           <button className="primary-btn" type="submit">
@@ -244,13 +288,24 @@ function ChoiceRow({
   options,
   disabled = false,
   compact = false,
+  selectedValue,
+  onValueChange,
+  error,
 }: {
   label: string;
   options: readonly string[];
   disabled?: boolean;
   compact?: boolean;
+  selectedValue?: string;
+  onValueChange?: (value: string) => void;
+  error?: string;
 }) {
-  const [value, setValue] = useState("");
+  const [localValue, setLocalValue] = useState("");
+  const value = selectedValue ?? localValue;
+  const selectValue = (nextValue: string) => {
+    setLocalValue(nextValue);
+    onValueChange?.(nextValue);
+  };
   return (
     <fieldset className="space-y-2">
       <legend className="text-sm font-medium">{label}</legend>
@@ -260,13 +315,15 @@ function ChoiceRow({
             key={option}
             type="button"
             disabled={disabled}
-            onClick={() => setValue(option)}
+            onClick={() => selectValue(option)}
+            aria-pressed={value === option}
             className={`choice ${compact ? "profile-choice" : ""} ${value === option ? "choice-active" : ""} disabled:cursor-default`}
           >
             {option}
           </button>
         ))}
       </div>
+      {error && <p className="field-error" role="alert">{error}</p>}
     </fieldset>
   );
 }
@@ -277,27 +334,54 @@ function Signup({ go }: { go: (screen: Screen) => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [formMessage, setFormMessage] = useState("");
-  const { role, setRole } = useContext(RoleContext);
+  const [compatibility, setCompatibility] = useState<Record<string, string>>({});
+  const { role } = useContext(RoleContext);
+  const [selectedRoles, setSelectedRoles] = useState<ProfileRole[]>([role]);
+  const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string; confirmPassword?: string; terms?: string; profile?: string; compatibility?: Record<string, string | undefined> }>({});
   const { users, registerUser } = useContext(UserContext);
   function submit(event: FormEvent) {
     event.preventDefault();
-    if (!accepted) return;
-    if (users.some((user) => user.email.toLowerCase() === email.trim().toLowerCase())) {
-      setFormMessage("Já existe uma conta com esse e-mail.");
+    const nextErrors: { name?: string; email?: string; password?: string; confirmPassword?: string; terms?: string; profile?: string; compatibility?: Record<string, string | undefined> } = {};
+    const normalizedName = name.trim();
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!normalizedName) nextErrors.name = "Informe seu nome completo.";
+    else if (normalizedName.split(/\s+/).length < 2) nextErrors.name = "Digite seu nome e sobrenome.";
+    if (!normalizedEmail) nextErrors.email = "Informe seu e-mail.";
+    else if (!emailPattern.test(normalizedEmail)) nextErrors.email = "Digite um e-mail válido.";
+    if (!password) nextErrors.password = "Crie uma senha.";
+    else if (!/(?=.*\p{L})(?=.*\d).{8,}/u.test(password)) nextErrors.password = "Use pelo menos 8 caracteres, incluindo letras e números.";
+    if (!confirmPassword) nextErrors.confirmPassword = "Confirme sua senha.";
+    else if (password !== confirmPassword) nextErrors.confirmPassword = "As senhas não coincidem.";
+    if (!selectedRoles.length) nextErrors.profile = "Escolha pelo menos um perfil.";
+    if (!(selectedRoles.length === 1 && selectedRoles[0] === "Locador")) {
+      const compatibilityErrors: Record<string, string> = {};
+      if (!compatibility["Gênero"]) compatibilityErrors["Gênero"] = "Selecione uma opção.";
+      if (!compatibility["Idade"]?.trim()) compatibilityErrors["Idade"] = "Informe sua idade.";
+      for (const [label] of signupGroups) {
+        if (!compatibility[label]) compatibilityErrors[label] = "Selecione uma opção.";
+      }
+      if (!compatibility.Curso?.trim()) compatibilityErrors.Curso = "Informe seu curso.";
+      if (Object.keys(compatibilityErrors).length) nextErrors.compatibility = compatibilityErrors;
+    }
+    if (!accepted) nextErrors.terms = "Aceite os termos para criar sua conta.";
+    if (users.some((user) => user.email.toLowerCase() === normalizedEmail)) {
+      nextErrors.email = "Já existe uma conta com esse e-mail.";
+    }
+    if (Object.keys(nextErrors).length) {
+      setErrors(nextErrors);
       return;
     }
-    if (password !== confirmPassword) {
-      setFormMessage("As senhas não coincidem.");
-      return;
-    }
+    const primaryRole: ProfileRole = selectedRoles.includes("Locador") ? "Locador"
+      : selectedRoles.includes("Anfitrião") ? "Anfitrião"
+      : selectedRoles.includes("Colega de quarto") ? "Colega de quarto"
+      : "Locatário";
     const newUser: MockUser = {
       id: `user-${Date.now()}`,
-      name: name.trim(),
-      email: email.trim().toLowerCase(),
-      role,
-      roles: [role],
-      profileLabel: role,
+      name: normalizedName,
+      email: normalizedEmail,
+      role: primaryRole,
+      roles: [...selectedRoles],
+      profileLabel: selectedRoles.join(" e "),
       password,
     };
     registerUser(newUser);
@@ -311,62 +395,73 @@ function Signup({ go }: { go: (screen: Screen) => void }) {
           <h1>Crie sua conta</h1>
           <p className="muted mt-2">Seu novo jeito de morar começa aqui.</p>
         </div>
-        <form className="mt-6 space-y-4" onSubmit={submit}>
-          <label className="field">
-            <span>Nome completo</span>
-            <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Digite seu nome completo" required />
-          </label>
-          <label className="field">
-            <span>E-mail</span>
-            <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Digite seu e-mail" required />
-          </label>
-          <PasswordField value={password} onChange={setPassword} placeholder="Crie uma senha" minLength={8} />
+        <form className="mt-6 space-y-4" onSubmit={submit} noValidate>
+          <div className="space-y-1.5">
+            <label className={`field ${errors.name ? "field-invalid" : ""}`}>
+              <span>Nome completo</span>
+              <input value={name} onChange={(event) => { setName(event.target.value); setErrors((current) => ({ ...current, name: undefined })); }} placeholder="Digite seu nome completo" required aria-invalid={errors.name ? "true" : undefined} aria-describedby={errors.name ? "signup-name-error" : undefined} />
+            </label>
+            <InlineFieldError id="signup-name-error" message={errors.name} />
+          </div>
+          <div className="space-y-1.5">
+            <label className={`field ${errors.email ? "field-invalid" : ""}`}>
+              <span>E-mail</span>
+              <input type="email" autoComplete="email" value={email} onChange={(event) => { setEmail(event.target.value); setErrors((current) => ({ ...current, email: undefined })); }} placeholder="Digite seu e-mail" required aria-invalid={errors.email ? "true" : undefined} aria-describedby={errors.email ? "signup-email-error" : undefined} />
+            </label>
+            <InlineFieldError id="signup-email-error" message={errors.email} />
+          </div>
+          <PasswordField id="signup-password" value={password} onChange={(value) => { setPassword(value); setErrors((current) => ({ ...current, password: undefined })); }} placeholder="Crie uma senha" minLength={8} error={errors.password} />
           <p className="-mt-2 text-xs text-[#655e69]">
             Use pelo menos 8 caracteres, incluindo letras e números.
           </p>
-          <PasswordField label="Confirmar senha" value={confirmPassword} onChange={setConfirmPassword} placeholder="Digite a senha novamente" />
+          <PasswordField id="signup-confirm-password" label="Confirmar senha" value={confirmPassword} onChange={(value) => { setConfirmPassword(value); setErrors((current) => ({ ...current, confirmPassword: undefined })); }} placeholder="Digite a senha novamente" error={errors.confirmPassword} />
           <div className="border-t border-[#e8e2ec] pt-6">
-            <h2 className="text-xl font-semibold">{role === "Locador" ? "Tipo de perfil" : "Perfil de compatibilidade"}</h2>
+            <h2 className="text-xl font-semibold">{selectedRoles.length === 1 && selectedRoles[0] === "Locador" ? "Tipo de perfil" : "Perfil de compatibilidade"}</h2>
           </div>
-          <ProfileRoleSelector label={role === "Locador" ? undefined : "Tipo de perfil"} role={role} setRole={setRole} />
-          <p className="muted text-sm">Conte sobre você para encontrar colegas com mais afinidade. As respostas são opcionais.</p>
-          {role !== "Locador" && (
+          <ProfileRoleSelector label="Tipo de perfil" roles={selectedRoles} setRoles={(nextRoles) => { setSelectedRoles(nextRoles); setErrors((current) => ({ ...current, profile: undefined })); }} />
+          <InlineFieldError id="signup-profile-error" message={errors.profile} />
+          <p className="muted text-sm">Conte sobre você para encontrar colegas com mais afinidade. Todos os campos são obrigatórios, exceto para locadores.</p>
+          {!(selectedRoles.length === 1 && selectedRoles[0] === "Locador") && (
             <>
               <h3 className="font-semibold">Sobre você</h3>
-              <ChoiceRow label="Gênero" options={["Feminino", "Masculino", "Outro", "Não informar"]} />
-              <label className="field">
+              <ChoiceRow label="Gênero" options={["Feminino", "Masculino", "Outro", "Não informar"]} selectedValue={compatibility["Gênero"]} onValueChange={(value) => { setCompatibility((current) => ({ ...current, "Gênero": value })); setErrors((current) => ({ ...current, compatibility: { ...current.compatibility, "Gênero": undefined } })); }} error={errors.compatibility?.["Gênero"]} />
+              <label className={`field ${errors.compatibility?.["Idade"] ? "field-invalid" : ""}`}>
                 <span>Idade</span>
-                <input type="number" placeholder="Digite sua idade" />
+                <input type="number" value={compatibility["Idade"] ?? ""} onChange={(event) => { setCompatibility((current) => ({ ...current, "Idade": event.target.value })); setErrors((current) => ({ ...current, compatibility: { ...current.compatibility, "Idade": undefined } })); }} placeholder="Digite sua idade" aria-invalid={errors.compatibility?.["Idade"] ? "true" : undefined} />
+                {errors.compatibility?.["Idade"] && <span className="field-error">{errors.compatibility["Idade"]}</span>}
               </label>
               <h3 className="pt-2 font-semibold">Hábitos e rotina</h3>
               {signupGroups.slice(0, 6).map(([label, options]) => (
-                <ChoiceRow key={label} label={label} options={options} />
+                <ChoiceRow key={label} label={label} options={options} selectedValue={compatibility[label]} onValueChange={(value) => { setCompatibility((current) => ({ ...current, [label]: value })); setErrors((current) => ({ ...current, compatibility: { ...current.compatibility, [label]: undefined } as Record<string, string> })); }} error={errors.compatibility?.[label]} />
               ))}
               <h3 className="pt-2 font-semibold">Estudos e convivência</h3>
-              <ChoiceRow label={signupGroups[6][0]} options={signupGroups[6][1]} />
-              <label className="field">
+              <ChoiceRow label={signupGroups[6][0]} options={signupGroups[6][1]} selectedValue={compatibility[signupGroups[6][0]]} onValueChange={(value) => { setCompatibility((current) => ({ ...current, [signupGroups[6][0]]: value })); setErrors((current) => ({ ...current, compatibility: { ...current.compatibility, [signupGroups[6][0]]: undefined } })); }} error={errors.compatibility?.[signupGroups[6][0]]} />
+              <label className={`field ${errors.compatibility?.Curso ? "field-invalid" : ""}`}>
                 <span>Curso</span>
-                <input placeholder="Digite seu curso" />
+                <input value={compatibility.Curso ?? ""} onChange={(event) => { setCompatibility((current) => ({ ...current, Curso: event.target.value })); setErrors((current) => ({ ...current, compatibility: { ...current.compatibility, Curso: undefined } })); }} placeholder="Digite seu curso" aria-invalid={errors.compatibility?.Curso ? "true" : undefined} />
+                {errors.compatibility?.Curso && <span className="field-error">{errors.compatibility.Curso}</span>}
               </label>
               {signupGroups.slice(7).map(([label, options]) => (
-                <ChoiceRow key={label} label={label} options={options} />
+                <ChoiceRow key={label} label={label} options={options} selectedValue={compatibility[label]} onValueChange={(value) => { setCompatibility((current) => ({ ...current, [label]: value })); setErrors((current) => ({ ...current, compatibility: { ...current.compatibility, [label]: undefined } as Record<string, string> })); }} error={errors.compatibility?.[label]} />
               ))}
             </>
           )}
           <label className="flex items-start gap-3 py-2 text-xs text-[#655e69]">
             <input
+              aria-invalid={errors.terms ? "true" : undefined}
+              aria-describedby={errors.terms ? "signup-terms-error" : undefined}
               className="mt-0.5 size-5 accent-[#a100ff]"
               type="checkbox"
               checked={accepted}
-              onChange={(e) => setAccepted(e.target.checked)}
+              onChange={(e) => { setAccepted(e.target.checked); if (e.target.checked) setErrors((current) => ({ ...current, terms: undefined })); }}
             />
             <span>
               Li e aceito os <u className="font-medium text-[#7501dd]">Termos de Uso</u> e{" "}
               <u className="font-medium text-[#7501dd]">Política de Privacidade</u>.
             </span>
           </label>
-          {formMessage && <p className="notice" role="alert">{formMessage}</p>}
-          <button className="primary-btn disabled:opacity-50" disabled={!accepted}>
+          <InlineFieldError id="signup-terms-error" message={errors.terms} />
+          <button type="submit" className="primary-btn">
             Criar conta
           </button>
           <p className="text-center text-sm text-[#655e69]">
@@ -2960,6 +3055,7 @@ function ProfileIcon({ name }: { name: "person" | "email" | "phone" | "lock" | "
 function Profile({ go }: { go: (screen: Screen) => void }) {
   const { role, setRole } = useContext(RoleContext);
   const { user, setUser } = useContext(UserContext);
+  const assignedRoles = rolesForUser(user, role);
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -3030,7 +3126,7 @@ function Profile({ go }: { go: (screen: Screen) => void }) {
         <div>
           <p className="mb-2 text-xs font-medium">Perfil</p>
           <div className="flex flex-wrap gap-2">
-            {(role === "Anfitrião" ? ["Anfitrião", "Locatário"] : role === "Colega de quarto" ? ["Colega de quarto", "Locatário"] : [role]).map((profile) => (
+            {assignedRoles.map((profile) => (
               <span key={profile} className="profile-pill inline-block">{profile}</span>
             ))}
           </div>
