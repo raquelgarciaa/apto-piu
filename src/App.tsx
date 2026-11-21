@@ -1,4 +1,4 @@
-import { createContext, FormEvent, PointerEvent as ReactPointerEvent, useContext, useRef, useState } from "react";
+﻿import { createContext, FormEvent, PointerEvent as ReactPointerEvent, useContext, useRef, useState } from "react";
 
 type Screen =
   | "login"
@@ -34,6 +34,7 @@ const initialMockUsers: MockUser[] = [
   { id: "joao-souza", name: "João Souza", email: "joao.souza@apto.com", role: "Colega de quarto", roles: ["Colega de quarto", "Locatário"], profileLabel: "Colega de quarto e locatário" },
   { id: "ana-beatriz", name: "Ana Beatriz", email: "ana.beatriz@apto.com", role: "Anfitrião", roles: ["Anfitrião"], profileLabel: "Anfitriã" },
   { id: "roberto-silva", name: "Roberto Silva", email: "roberto.silva@apto.com", role: "Locador", roles: ["Locador"], profileLabel: "Locador" },
+  { id: "camila-oliveira", name: "Camila Oliveira", email: "camila.oliveira@apto.com", role: "Locatário", roles: ["Locatário"], profileLabel: "Locatária" },
 ];
 const RoleContext = createContext<{ role: ProfileRole; setRole: (role: ProfileRole) => void }>({
   role: "Locatário",
@@ -51,12 +52,22 @@ function readMockUsers(): MockUser[] {
     const saved = window.localStorage.getItem("apto-users");
     if (saved) {
       const users = JSON.parse(saved);
-      if (Array.isArray(users)) return (users as unknown[])
-        .filter((account): account is MockUser => Boolean(account) && typeof account === "object" && typeof (account as MockUser).id === "string" && typeof (account as MockUser).email === "string")
-        .map((account) => {
-        const seed = initialMockUsers.find((item) => item.id === account.id);
-        return seed ? { ...account, role: seed.role, roles: seed.roles, profileLabel: seed.profileLabel } : account;
-      });
+      if (Array.isArray(users)) {
+        const savedUsers = (users as unknown[]).filter(
+          (account): account is MockUser =>
+            Boolean(account) &&
+            typeof account === "object" &&
+            typeof (account as MockUser).id === "string" &&
+            typeof (account as MockUser).email === "string",
+        );
+        return [
+          ...initialMockUsers.map((seed) => {
+            const account = savedUsers.find((item) => item.id === seed.id);
+            return account ? { ...seed, ...account, role: seed.role, roles: seed.roles, profileLabel: seed.profileLabel } : seed;
+          }),
+          ...savedUsers.filter((account) => !initialMockUsers.some((seed) => seed.id === account.id)),
+        ];
+      }
     }
   } catch {
     // Fall back to the built-in demo accounts if storage is unavailable or invalid.
@@ -198,7 +209,8 @@ function Login({ go }: { go: (screen: Screen) => void }) {
       setErrors(nextErrors);
       return;
     }
-    const user = users.find((account) => account.email.toLowerCase() === normalizedEmail);
+    const user = users.find((account) => account.email.toLowerCase() === normalizedEmail)
+      ?? initialMockUsers.find((account) => account.email.toLowerCase() === normalizedEmail);
     if (!user) {
       setErrors({ email: "Não encontramos uma conta com esse e-mail." });
       return;
@@ -551,6 +563,77 @@ const initialFilters: FilterState = {
   furniture: "Tanto faz",
   amenities: [],
 };
+const clearedFilters: FilterState = {
+  ...initialFilters,
+  purpose: "Tanto faz",
+  types: [],
+  rooms: "Qualquer",
+  baths: "Qualquer",
+  garage: "Qualquer",
+  furniture: "Tanto faz",
+  amenities: [],
+};
+
+type PropertyListing = {
+  id: string;
+  purpose: "Dividir" | "Alugar";
+  type: string;
+  title: string;
+  price: string;
+  priceValue: number;
+  neighborhood: string;
+  host: string;
+  hostImage: string;
+  image: string;
+  furniture: "Mobiliado" | "Não mobiliado";
+  rooms: number;
+  baths: number;
+  garage: number;
+  area: number;
+  floor: string;
+  amenities: string[];
+  compatibility?: number;
+};
+
+const mockProperties: PropertyListing[] = [
+  { id: "redemais", purpose: "Dividir", type: "Apartamento", title: "Condomínio RedeMais", price: "R$ 200 por mês", priceValue: 200, neighborhood: "Ponta Negra, Rua xxxx", host: "Gabriel Sousa", hostImage: "36039.png", image: "f2a6e.png", furniture: "Mobiliado", rooms: 2, baths: 2, garage: 2, area: 65, floor: "5º andar", amenities: ["Elevador", "Varanda", "Portaria 24h"], compatibility: 90 },
+  { id: "casa-comercial", purpose: "Alugar", type: "Comercial", title: "Casa comercial", price: "R$ 1.500 por mês", priceValue: 1500, neighborhood: "Capim Macio, Rua xxxx", host: "Marcos Carvalho", hostImage: "49c93.png", image: "apartment-living-room.jpg", furniture: "Não mobiliado", rooms: 3, baths: 2, garage: 2, area: 120, floor: "Térreo", amenities: ["Varanda", "Portaria 24h"] },
+  { id: "kitnet-lagoa", purpose: "Alugar", type: "Kitnet", title: "Kitnet em Lagoa Nova", price: "R$ 950 por mês", priceValue: 950, neighborhood: "Lagoa Nova, Rua das Acácias", host: "Marcos Carvalho", hostImage: "49c93.png", image: "apartment-bedroom.jpg", furniture: "Mobiliado", rooms: 1, baths: 1, garage: 1, area: 38, floor: "2º andar", amenities: ["Elevador", "Aceita pets"] },
+  { id: "quarto-ponta-negra", purpose: "Dividir", type: "Quarto", title: "Quarto em apê compartilhado", price: "R$ 700 por mês", priceValue: 700, neighborhood: "Ponta Negra, Rua Praia", host: "Juliana Lima", hostImage: "b5b70.png", image: "apartment-bedroom.jpg", furniture: "Mobiliado", rooms: 3, baths: 2, garage: 1, area: 82, floor: "8º andar", amenities: ["Elevador", "Piscina", "Aceita pets"], compatibility: 84 },
+  { id: "casa-tirol", purpose: "Alugar", type: "Casa", title: "Casa ampla no Tirol", price: "R$ 2.400 por mês", priceValue: 2400, neighborhood: "Tirol, Av. Hermes da Fonseca", host: "Marcos Carvalho", hostImage: "49c93.png", image: "f2a6e.png", furniture: "Não mobiliado", rooms: 3, baths: 3, garage: 2, area: 145, floor: "Térreo", amenities: ["Varanda", "Piscina", "Aceita pets"] },
+  { id: "apto-lagoa-dividir", purpose: "Dividir", type: "Apartamento", title: "Apartamento perto da UFRN", price: "R$ 850 por mês", priceValue: 850, neighborhood: "Lagoa Nova, Rua dos Ipês", host: "Gabriel Sousa", hostImage: "36039.png", image: "apartment-living-room.jpg", furniture: "Mobiliado", rooms: 2, baths: 1, garage: 1, area: 58, floor: "3º andar", amenities: ["Varanda", "Aceita pets"], compatibility: 76 },
+  { id: "apto-tirol-alugar", purpose: "Alugar", type: "Apartamento", title: "Apartamento no Tirol", price: "R$ 1.900 por mês", priceValue: 1900, neighborhood: "Tirol, Rua Ceará-Mirim", host: "Marcos Carvalho", hostImage: "49c93.png", image: "apartment-living-room.jpg", furniture: "Mobiliado", rooms: 2, baths: 2, garage: 2, area: 78, floor: "7º andar", amenities: ["Elevador", "Varanda", "Portaria 24h"] },
+  { id: "casa-ponta-negra-alugar", purpose: "Alugar", type: "Casa", title: "Casa com quintal em Ponta Negra", price: "R$ 2.100 por mês", priceValue: 2100, neighborhood: "Ponta Negra, Rua Praia de Ponta Negra", host: "Marcos Carvalho", hostImage: "49c93.png", image: "f2a6e.png", furniture: "Não mobiliado", rooms: 3, baths: 2, garage: 2, area: 132, floor: "Térreo", amenities: ["Varanda", "Aceita pets"] },
+  { id: "kitnet-alecrim-alugar", purpose: "Alugar", type: "Kitnet", title: "Kitnet prática no Alecrim", price: "R$ 780 por mês", priceValue: 780, neighborhood: "Alecrim, Av. Coronel Estevam", host: "Marcos Carvalho", hostImage: "49c93.png", image: "apartment-bedroom.jpg", furniture: "Mobiliado", rooms: 1, baths: 1, garage: 0, area: 32, floor: "1º andar", amenities: ["Aceita pets"] },
+  { id: "comercial-petropolis-alugar", purpose: "Alugar", type: "Comercial", title: "Sala comercial em Petrópolis", price: "R$ 1.800 por mês", priceValue: 1800, neighborhood: "Petrópolis, Av. Afonso Pena", host: "Marcos Carvalho", hostImage: "49c93.png", image: "apartment-living-room.jpg", furniture: "Não mobiliado", rooms: 2, baths: 1, garage: 1, area: 54, floor: "4º andar", amenities: ["Elevador", "Portaria 24h"] },
+  { id: "apto-capim-macio-alugar", purpose: "Alugar", type: "Apartamento", title: "Apartamento familiar em Capim Macio", price: "R$ 2.200 por mês", priceValue: 2200, neighborhood: "Capim Macio, Rua Walter Fernandes", host: "Marcos Carvalho", hostImage: "49c93.png", image: "f2a6e.png", furniture: "Não mobiliado", rooms: 3, baths: 2, garage: 2, area: 96, floor: "6º andar", amenities: ["Elevador", "Piscina", "Varanda", "Aceita pets"] },
+];
+
+type RentalDealStatus = "Pendente" | "Em andamento" | "Concluída";
+type RentalDeal = { id: string; property: PropertyListing; status: RentalDealStatus };
+const initialRentalDeals: RentalDeal[] = [
+  { id: "demo-pendente", property: mockProperties.find((property) => property.id === "kitnet-lagoa")!, status: "Pendente" },
+  { id: "demo-concluida", property: mockProperties.find((property) => property.id === "casa-tirol")!, status: "Concluída" },
+];
+const landlordDealListing: PropertyListing = {
+  id: "landlord-deal-luxo",
+  purpose: "Alugar",
+  type: "Apartamento",
+  title: "Condomínio de luxo",
+  price: "R$ 99,90 por mês",
+  priceValue: 99.9,
+  neighborhood: "Pinheiros, São Paulo",
+  host: "Roberto Silva",
+  hostImage: "36039.png",
+  image: "f2a6e.png",
+  furniture: "Não mobiliado",
+  rooms: 2,
+  baths: 1,
+  garage: 1,
+  area: 65,
+  floor: "5º andar",
+  amenities: [],
+};
 
 function countActiveFilters(filters: FilterState) {
   return (
@@ -561,67 +644,66 @@ function countActiveFilters(filters: FilterState) {
   );
 }
 
-function ListingCard({ second = false, onClick }: { second?: boolean; onClick: () => void }) {
+function matchesFilters(property: PropertyListing, filters: FilterState) {
+  const minValue = (value: string) => value === "Qualquer" ? 0 : Number.parseInt(value, 10);
+  return (filters.purpose === "Tanto faz" || filters.purpose === property.purpose)
+    && (!filters.types.length || filters.types.includes(property.type))
+    && property.rooms >= minValue(filters.rooms)
+    && property.baths >= minValue(filters.baths)
+    && property.garage >= minValue(filters.garage)
+    && (filters.furniture === "Tanto faz" || filters.furniture === property.furniture)
+    && filters.amenities.every((amenity) => property.amenities.includes(amenity));
+}
+
+function normalizeSearch(value: string) {
+  return value.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLocaleLowerCase("pt-BR");
+}
+
+function ListingCard({ property, onClick }: { property: PropertyListing; onClick: () => void }) {
   return (
     <button type="button" onClick={onClick} className="block w-full text-left">
-    <article className="overflow-hidden rounded-[10px] border border-black/50 bg-white">
-      <div className="relative h-[147px]">
-        <img
-          src={`${A}/f2a6e.png`}
-          className="h-full w-full object-cover"
-          alt="Sala ampla e iluminada do imóvel"
-        />
-        <span
-          className={`absolute left-1.5 top-3 min-w-36 rounded-full px-8 py-1 text-center text-[13px] text-white ${second ? "bg-[#0ca719]" : "bg-[#eab310]"}`}
-        >
-          {second ? "Para alugar" : "Para dividir"}
-        </span>
-      </div>
-      <div className="flex min-h-[99px] justify-between gap-4 p-2.5">
-        <div className="space-y-1">
-          <h3 className="text-[15px] font-medium">
-            {second ? "Casa comercial" : "Condominínio RedeMais"}
-          </h3>
-          <p className="text-sm font-semibold">{second ? "R$ 1.500 por mês" : "R$ 200 por mês"}</p>
-          <p className="text-[13px]">
-            {second ? "Capim Macio, Rua xxxx" : "Ponta Negra, Rua xxxx"}
-          </p>
-        </div>
-        <div className="flex shrink-0 flex-col items-end justify-between">
-          <span
-            className={`rounded-full px-3 py-1 text-[10px] text-white ${second ? "bg-[#c60003]" : "bg-[#a100ff]"}`}
-          >
-            {second ? "Não mobiliado" : "Mobiliado"}
-          </span>
-          <span className="flex items-center gap-1 text-xs">
-            <img
-              className="size-[15px] rounded-full"
-              src={`${A}/${second ? "49c93" : "36039"}.png`}
-              alt=""
-            />
-            {second ? "Marcos Carvalho" : "Gabriel Sousa"}
+      <article className="overflow-hidden rounded-[10px] border border-black/50 bg-white">
+        <div className="relative h-[147px]">
+          <img src={`${A}/${property.image}`} className="h-full w-full object-cover" alt={property.title} />
+          <span className={`absolute left-1.5 top-3 min-w-36 rounded-full px-8 py-1 text-center text-[13px] text-white ${property.purpose === "Alugar" ? "bg-[#0ca719]" : "bg-[#eab310]"}`}>
+            {property.purpose === "Alugar" ? "Para alugar" : "Para dividir"}
           </span>
         </div>
-      </div>
-    </article>
+        <div className="flex min-h-[99px] justify-between gap-4 p-2.5">
+          <div className="space-y-1">
+            <h3 className="text-[15px] font-medium">{property.title}</h3>
+            <p className="text-sm font-semibold">{property.price}</p>
+            <p className="text-[13px]">{property.neighborhood}</p>
+          </div>
+          <div className="flex shrink-0 flex-col items-end justify-between">
+            <span className={`rounded-full px-3 py-1 text-[10px] text-white ${property.furniture === "Não mobiliado" ? "bg-[#c60003]" : "bg-[#a100ff]"}`}>{property.furniture}</span>
+            <span className="flex items-center gap-1 text-xs"><img className="size-[15px] rounded-full" src={`${A}/${property.hostImage}`} alt="" />{property.host}</span>
+          </div>
+        </div>
+      </article>
     </button>
   );
 }
-
 function Home({
   go,
   filters,
   setFilters,
   clearFilters,
 }: {
-  go: (screen: Screen) => void;
+  go: (screen: Screen, property?: PropertyListing) => void;
   filters: FilterState;
   setFilters: (filters: FilterState) => void;
   clearFilters: () => void;
 }) {
   const [search, setSearch] = useState("");
   const selectedFilterCount = countActiveFilters(filters);
+  const visibleProperties = mockProperties.filter((property) => {
+    const query = normalizeSearch(search.trim());
+    const searchable = normalizeSearch([property.title, property.type, property.purpose, property.price, property.neighborhood, property.host, property.furniture, ...property.amenities].join(" "));
+    return matchesFilters(property, filters) && (!query || searchable.includes(query));
+  });
   const chips = [
+    ...(filters.purpose !== "Tanto faz" ? [{ label: filters.purpose, remove: () => setFilters({ ...filters, purpose: "Tanto faz" }) }] : []),
     ...filters.types.map((label) => ({
       label,
       remove: () =>
@@ -651,6 +733,8 @@ function Home({
           },
         ]
       : []),
+    ...(filters.furniture !== "Tanto faz" ? [{ label: filters.furniture, remove: () => setFilters({ ...filters, furniture: "Tanto faz" }) }] : []),
+    ...filters.amenities.map((label) => ({ label, remove: () => setFilters({ ...filters, amenities: filters.amenities.filter((item) => item !== label) }) })),
   ];
   return (
     <main className="flex min-h-dvh flex-col bg-white">
@@ -673,7 +757,7 @@ function Home({
             </span>
           </button>
         </div>
-        <div className="mt-7 flex min-h-[52px] flex-wrap content-start gap-2">
+        {chips.length > 0 && <div className="mt-7 flex min-h-[52px] flex-wrap content-start gap-2">
           {chips.map((chip) => (
             <span key={chip.label} className="filter-tag">
               {chip.label}
@@ -694,10 +778,10 @@ function Home({
               Limpar
             </button>
           )}
-        </div>
-        <div className="mt-4 grid gap-[30px]">
-          <ListingCard onClick={() => go("property-roommate")} />
-          <ListingCard second onClick={() => go("property-rental")} />
+        </div>}
+        <div className="mt-4 grid gap-[20px]">
+          {visibleProperties.map((property) => <ListingCard key={property.id} property={property} onClick={() => go(property.purpose === "Alugar" ? "property-rental" : "property-roommate", property)} />)}
+          {!visibleProperties.length && <div className="rounded-xl border border-dashed border-[#cfc7d3] px-5 py-10 text-center text-sm text-[#706a73]">Nenhum imóvel encontrado. Ajuste os filtros ou tente outra busca.</div>}
         </div>
       </div>
       <BottomNav active="home" go={go} />
@@ -760,7 +844,7 @@ function Filters({
         </div>
         <button
           className="text-xs font-semibold text-[#7501dd]"
-          onClick={() => setDraft(initialFilters)}
+          onClick={() => setDraft(clearedFilters)}
         >
           Limpar filtros
         </button>
@@ -832,7 +916,7 @@ function Filters({
         </section>
       </div>
       <div className="border-t border-[#e7e2e9] px-[18px] pb-[18px] pt-3.5 text-center">
-        <p className="mb-2.5 text-xs text-[#706a73]">24 imóveis encontrados com estes filtros</p>
+        <p className="mb-2.5 text-xs text-[#706a73]">{mockProperties.filter((property) => matchesFilters(property, draft)).length} imóveis encontrados com estes filtros</p>
         <button
           className="primary-btn !h-[46px]"
           onClick={() => {
@@ -933,7 +1017,7 @@ function Roommate({ go }: { go: (screen: Screen) => void }) {
   );
 }
 
-function MapView({ go }: { go: (screen: Screen) => void }) {
+function MapView({ go, openChat }: { go: (screen: Screen) => void; openChat: (partner: ChatPartner, contactName?: string) => void }) {
   const [selected, setSelected] = useState(false);
   const [mapPosition, setMapPosition] = useState({ x: 0, y: 0 });
   const [mapZoom, setMapZoom] = useState(1.15);
@@ -1188,7 +1272,7 @@ function MapView({ go }: { go: (screen: Screen) => void }) {
                 >
                   Ver detalhes
                 </button>
-                <button className="rounded-md bg-[#dedede] px-3 py-1 text-sm" onClick={() => go("chat")}>Conversar</button>
+                <button className="rounded-md bg-[#dedede] px-3 py-1 text-sm" onClick={() => openChat("landlord", "Marcos Carvalho")}>Conversar</button>
               </div>
             </div>
           </div>
@@ -1202,18 +1286,20 @@ function PropertyDetail({
   onBack,
   onConfirm,
   kind,
+  property,
 }: {
   onBack: () => void;
   onConfirm: () => void;
   kind: "roommate" | "rental";
+  property: PropertyListing;
 }) {
   const [confirming, setConfirming] = useState(false);
   const [photoIndex, setPhotoIndex] = useState(0);
   const isRental = kind === "rental";
-  const propertyName = isRental ? "Casa comercial" : "Condomínio RedeMais";
-  const hostName = isRental ? "Marcos Carvalho" : "Gabriel Sousa";
+  const propertyName = property.title;
+  const hostName = property.host;
   const propertyPhotos = [
-    { src: `${A}/f2a6e.png`, alt: `Sala de ${propertyName}` },
+    { src: `${A}/${property.image}`, alt: `Sala de ${propertyName}` },
     { src: `${A}/apartment-living-room.jpg`, alt: `Segunda sala de ${propertyName}` },
     { src: `${A}/apartment-bedroom.jpg`, alt: `Quarto de ${propertyName}` },
   ];
@@ -1229,7 +1315,7 @@ function PropertyDetail({
         </div>
       </header>
       <h1 className="mt-2 text-xl tracking-normal">{propertyName}</h1>
-      <p className="mt-2 text-sm font-semibold">{isRental ? "R$ 1.500 de aluguel por mês" : "R$ 200 por mês"}</p>
+      <p className="mt-2 text-sm font-semibold">{property.price.replace(" por mês", isRental ? " de aluguel por mês" : "")}</p>
       <img
         key={propertyPhotos[photoIndex].src}
         src={propertyPhotos[photoIndex].src}
@@ -1251,24 +1337,24 @@ function PropertyDetail({
       <div className="mt-3 text-[13px]">
         <p>Principais informações do imóvel:</p>
         <ul className="list-inside list-disc">
-          <li>Área: 65 m²</li>
-          <li>Quartos: 2</li>
-          <li>Banheiros: 1</li>
-          <li>Vagas de garagem: 1</li>
-          <li>Andar: 5º andar</li>
+          <li>Área: {property.area} m²</li>
+          <li>Quartos: {property.rooms}</li>
+          <li>Banheiros: {property.baths}</li>
+          <li>Vagas de garagem: {property.garage}</li>
+          <li>Andar: {property.floor}</li>
         </ul>
       </div>
       <section className="mt-7">
         <h2 className="text-xl font-semibold">Localização</h2>
         <p className="mt-3 text-[11px] leading-snug text-[#333]">
-          O imóvel está localizado no bairro de Lagoa Nova, em Natal – RN, em uma região tranquila e de fácil acesso. Fica próximo a supermercados, universidades, farmácias e pontos de ônibus, facilitando a rotina dos moradores.
+          O imóvel está localizado em {property.neighborhood}, Natal – RN, em uma região tranquila e de fácil acesso. Fica próximo a supermercados, universidades, farmácias e pontos de ônibus, facilitando a rotina dos moradores.
         </p>
       </section>
       {isRental && (
         <section className="mt-7">
           <h2 className="text-xl font-semibold">Valores e custos</h2>
           <ul className="mt-3 list-inside list-disc text-[11px] leading-snug">
-            <li>Aluguel: R$ 1.500,00/mês</li>
+            <li>Aluguel: {property.price.replace(" por mês", "/mês")}</li>
             <li>Condomínio: R$ 350,00/mês</li>
             <li>IPTU: R$ 80,00/mês</li>
             <li>Água, energia e gás: pagos à parte, conforme consumo.</li>
@@ -1279,25 +1365,25 @@ function PropertyDetail({
       <section className="mt-7">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">Sobre o anfitrião</h2>
-          {!isRental && <span className="rounded-full bg-[#0ca719] px-3 py-1 text-[10px] text-white">90% de compatibilidade</span>}
+          {!isRental && <span className="rounded-full bg-[#0ca719] px-3 py-1 text-[10px] text-white">{property.compatibility}% de compatibilidade</span>}
         </div>
         <div className="mt-2 flex gap-3">
           <div className="flex-1 space-y-3 text-[11px] leading-tight">
             {isRental ? (
               <>
-                <p>Olá! Meu nome é Marcos Carvalho e sou locador de um apartamento que prezo por manter em boas condições, com organização, tranquilidade e conforto para os moradores.</p>
+                <p>Olá! Meu nome é {hostName} e sou locador de um imóvel que prezo por manter em boas condições, com organização, tranquilidade e conforto para os moradores.</p>
                 <p>Busco pessoas responsáveis, cuidadosas e respeitosas, que valorizem a boa convivência e zelem pelo imóvel. Espero que os moradores mantenham os ambientes limpos e organizados, respeitem as regras do apartamento e contribuam para um ambiente harmonioso.</p>
               </>
             ) : (
               <>
-                <p>Olá! Meu nome é Gabriel Sousa e estou procurando um colega para dividir o apartamento comigo.</p>
+                <p>Olá! Meu nome é {hostName} e estou procurando alguém para dividir este imóvel comigo.</p>
                 <p>Sou uma pessoa tranquila e valorizo bastante um ambiente silencioso e organizado. Procuro alguém que não fume, não tenha pets e que respeite um ambiente mais reservado. Não são permitidas festas ou eventos no apartamento, pois prefiro manter a casa calma e confortável para todos.</p>
               </>
             )}
           </div>
           <div className="w-[90px] shrink-0 text-center">
             <img
-              src={`${A}/${isRental ? "49c93" : "30150"}.png`}
+              src={`${A}/${property.hostImage}`}
               className="mx-auto h-[84px] w-[81px] rounded-full object-cover"
               alt={hostName}
             />
@@ -1375,12 +1461,12 @@ function PropertyDetail({
 
 type ProposalStatus = "Pendente" | "Em andamento" | "Concluída";
 
-function ProposalCard({ status, onChat }: { status: ProposalStatus; onChat: () => void }) {
+function ProposalCard({ status, property, onChat }: { status: ProposalStatus; property: PropertyListing; onChat: () => void }) {
   const color =
     status === "Pendente" ? "#eab310" : status === "Em andamento" ? "#25a8e0" : "#089443";
   return (
     <article className="flex h-[116px] overflow-hidden rounded-[10px] border border-black/50">
-      <img src={`${A}/f2a6e.png`} className="w-[158px] object-cover" alt="Condomínio de luxo" />
+      <img src={`${A}/${property.image}`} className="w-[158px] object-cover" alt={property.title} />
       <div className="flex flex-1 flex-col items-end justify-between px-2 py-4">
         <span
           className="rounded-full px-3 py-1 text-[10px] text-white"
@@ -1388,7 +1474,10 @@ function ProposalCard({ status, onChat }: { status: ProposalStatus; onChat: () =
         >
           {status}
         </span>
-        <h2 className="text-[15px] font-medium">Condominínio de luxo</h2>
+        <div className="w-full text-right">
+          <h2 className="truncate text-[15px] font-medium">{property.title}</h2>
+          <small className="block truncate text-[9px] text-[#706a73]">{property.neighborhood}</small>
+        </div>
         {status === "Em andamento" ? (
           <ConversationButton label="Conversar com anfitriã" onClick={onChat} />
         ) : (
@@ -1408,7 +1497,7 @@ function Proposals({
   interestSubmitted,
 }: {
   go: (screen: Screen) => void;
-  openChat: (partner: ChatPartner, contactName?: string) => void;
+  openChat: (partner: ChatPartner, contactName?: string, property?: PropertyListing) => void;
   interestSubmitted: boolean;
 }) {
   const [tab, setTab] = useState<"sent" | "received">("sent");
@@ -1440,7 +1529,7 @@ function Proposals({
         {tab === "sent" ? (
           <div className="mt-5 space-y-6 pb-8">
             {statuses.map((status, index) => (
-              <ProposalCard key={`${status}-${index}`} status={status} onChat={() => openChat("host", "Ana Beatriz")} />
+              <ProposalCard key={`${status}-${index}`} status={status} property={mockProperties[0]} onChat={() => openChat("host", "Ana Beatriz", mockProperties[0])} />
             ))}
           </div>
         ) : (
@@ -1454,26 +1543,36 @@ function Proposals({
   );
 }
 
-function TenantBusiness({ go, openChat }: { go: (screen: Screen) => void; openChat: (partner: ChatPartner, contactName?: string) => void }) {
+function TenantBusiness({ go, openChat, deals }: { go: (screen: Screen) => void; openChat: (partner: ChatPartner, contactName?: string) => void; deals: RentalDeal[] }) {
+  const statusColors: Record<RentalDealStatus, string> = {
+    "Pendente": "#eab310",
+    "Em andamento": "#25a8e0",
+    "Concluída": "#089443",
+  };
   return (
     <main className="flex min-h-dvh flex-col bg-white">
       <Header go={go} />
       <div className="flex-1 px-[18px]">
         <p className="text-[13px] font-semibold">Acompanhe o andamento do seu aluguel.</p>
-        <article className="mt-5 flex h-[116px] overflow-hidden rounded-[10px] border border-black/50">
-          <img src={`${A}/f2a6e.png`} className="w-[158px] object-cover" alt="Condomínio de luxo" />
-          <div className="flex flex-1 flex-col items-end justify-between px-2 py-4">
-            <span className="rounded-full bg-[#25a8e0] px-3 py-1 text-[10px] text-white">Em andamento</span>
-            <h2 className="text-[15px] font-medium">Condomínio de luxo</h2>
-            <ConversationButton label="Conversar com locador" onClick={() => openChat("landlord", "João Azevedo")} />
-          </div>
-        </article>
+        <div className="mt-5 space-y-4 pb-6">
+          {deals.map(({ id, property, status }) => (
+            <article key={id} className="flex h-[116px] overflow-hidden rounded-[10px] border border-black/50">
+              <img src={`${A}/${property.image}`} className="w-[45%] shrink-0 object-cover" alt={property.title} />
+              <div className="flex min-w-0 flex-1 flex-col items-end justify-between px-2 py-3">
+                <span className="rounded-full px-3 py-1 text-[10px] text-white" style={{ backgroundColor: statusColors[status] }}>{status}</span>
+                <h2 className="w-full truncate text-right text-[15px] font-medium">{property.title}</h2>
+                {status === "Em andamento" ? (
+                  <ConversationButton label="Conversar com locador" onClick={() => openChat("landlord", property.host, property)} />
+                ) : <span className="h-6" />}
+              </div>
+            </article>
+          ))}
+        </div>
       </div>
       <BottomNav active="tenant-business" go={go} />
     </main>
   );
 }
-
 type HostProperty = {
   id: number;
   name: string;
@@ -2115,6 +2214,23 @@ function ConfirmDialog({
 }
 
 type LandlordDealStatus = "Pendente" | "Em andamento" | "Concluída";
+type LandlordAnnouncement = {
+  id: string;
+  purpose: string;
+  title: string;
+  type: string;
+  address: string;
+  description: string;
+  area: string;
+  rooms: string;
+  bathrooms: string;
+  garage: string;
+  floor: string;
+  price: string;
+  additional: string;
+  image: string;
+  paused: boolean;
+};
 
 function LandlordDealCard({
   status,
@@ -2260,19 +2376,61 @@ function PropertyManagementCard({
   );
 }
 
+function AddedPropertyCard({ property, onToggle, onEdit }: { property: LandlordAnnouncement; onToggle: () => void; onEdit: () => void }) {
+  return (
+    <article className="overflow-hidden rounded-[10px] border border-black/50">
+      <div className="relative h-[147px]">
+        <img src={property.image} className="h-full w-full object-cover" alt={property.title} />
+        <span className={`absolute left-3 top-3 rounded-full px-3 py-1 text-xs text-white ${property.paused ? "bg-[#706a73]" : "bg-[#089443]"}`}>
+          {property.paused ? "Pausado" : "Ativo"}
+        </span>
+      </div>
+      <div className="p-2">
+        <div className="flex justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            <h2 className="truncate text-[15px] font-medium">{property.title}</h2>
+            <p className="truncate text-[10px]">{property.address}</p>
+          </div>
+          <p className="shrink-0 text-right text-sm font-semibold">{property.price}<small className="block text-[9px] font-normal">{property.purpose === "Alugar" ? "/mês" : ""}</small></p>
+        </div>
+        <p className="mt-2 text-[11px] text-[#706a73]">{property.description}</p>
+        <div className={`mt-3 flex gap-3 pb-3 ${property.paused ? "justify-center" : "justify-between"}`}>
+          <button type="button" onClick={onToggle} className={`inline-flex h-10 min-w-0 items-center justify-center gap-2 rounded-full px-3 text-sm font-medium text-white ${property.paused ? "w-[65%] bg-[#089443]" : "flex-1 bg-[#b98000]"}`}>
+            <svg aria-hidden="true" className="size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="9.5" />
+              {property.paused ? <path d="m10 8 6 4-6 4z" fill="currentColor" stroke="none" /> : <path d="M9 8v8m6-8v8" />}
+            </svg>
+            <span className="whitespace-nowrap">{property.paused ? "Ativar anúncio" : "Pausar anúncio"}</span>
+          </button>
+          {!property.paused && <button type="button" onClick={onEdit} className="inline-flex h-10 min-w-0 flex-1 items-center justify-center gap-2 rounded-full bg-[#572288] px-3 text-sm font-medium text-white">
+            <svg aria-hidden="true" className="size-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m14 5 5 5M4 20l4.5-1 11-11a2.1 2.1 0 0 0-3-3l-11 11L4 20Z" />
+            </svg>
+            <span className="whitespace-nowrap">Editar anúncio</span>
+          </button>}
+        </div>
+      </div>
+    </article>
+  );
+}
+
 function LandlordBusiness({
   go,
   openChat,
   deals,
   setDeals,
+  announcements,
+  setAnnouncements,
   paused,
   setPaused,
   onNewAnnouncement,
 }: {
   go: (screen: Screen) => void;
-  openChat: (partner: ChatPartner, contactName?: string) => void;
+  openChat: (partner: ChatPartner, contactName?: string, property?: PropertyListing) => void;
   deals: LandlordDealStatus[];
   setDeals: (deals: LandlordDealStatus[]) => void;
+  announcements: LandlordAnnouncement[];
+  setAnnouncements: (announcements: LandlordAnnouncement[]) => void;
   paused: boolean[];
   setPaused: (paused: boolean[]) => void;
   onNewAnnouncement: () => void;
@@ -2302,13 +2460,13 @@ function LandlordBusiness({
             onClick={() => setTab("properties")}
             className={`flex flex-1 justify-center gap-2 rounded-full ${tab === "properties" ? "bg-[#bc90c7]" : "bg-[#e7e2e9]"}`}
           >
-            Meus imóveis <b className="rounded-full bg-black/10 px-1.5">2</b>
+            Meus imóveis <b className="rounded-full bg-black/10 px-1.5">{2 + announcements.length}</b>
           </button>
           <button
             onClick={() => setTab("deals")}
             className={`flex flex-1 justify-center gap-2 rounded-full ${tab === "deals" ? "bg-[#bc90c7]" : "bg-[#e7e2e9]"}`}
           >
-            Negociações Ativas <b className="rounded-full bg-black/10 px-1.5">{deals.filter((deal) => deal === "Em andamento").length}</b>
+            Negociações Ativas <b className="rounded-full bg-black/10 px-1.5">{deals.length}</b>
           </button>
         </div>
         {tab === "deals" ? (
@@ -2325,7 +2483,7 @@ function LandlordBusiness({
                   setSelectedDeal(index);
                   setDialog("remove");
                 }}
-                onChat={() => openChat("tenant", "Gabriel Sousa")}
+                onChat={() => openChat("tenant", "Gabriel Sousa", landlordDealListing)}
               />
             ))}
           </div>
@@ -2357,6 +2515,14 @@ function LandlordBusiness({
                     setSelectedDeal(index);
                     setDialog(paused[index] ? "activate" : "pause");
                   }}
+                  onEdit={() => go("landlord-edit")}
+                />
+              ))}
+              {announcements.map((property) => (
+                <AddedPropertyCard
+                  key={property.id}
+                  property={property}
+                  onToggle={() => setAnnouncements(announcements.map((item) => item.id === property.id ? { ...item, paused: !item.paused } : item))}
                   onEdit={() => go("landlord-edit")}
                 />
               ))}
@@ -2529,7 +2695,8 @@ function LandlordEdit({ go }: { go: (screen: Screen) => void }) {
   );
 }
 
-type ConversationRow = [string, string, string, string, ChatPartner];
+type ConversationRow = [string, string, string, string, ChatPartner, string?, boolean?, string?];
+type StartedConversation = { id: string; contactName: string; partner: ChatPartner; property: PropertyListing | null };
 const conversations: ConversationRow[] = [
   [
     "João Azevedo",
@@ -2583,11 +2750,10 @@ const hostConversations: ConversationRow[] = [
   ["Gabriel Sousa", "Você: Combinado! Amanhã às 15h. Te espero lá!", "08:58", "Colega de quarto · Condomínio RedeMais", "tenant"],
 ];
 const landlordConversations: ConversationRow[] = [
-  ["Roberto Silva", "Você: Combinado! Amanhã às 15h. Te espero lá!", "08:58", "Locatário · Condomínio RedeMais", "tenant"],
+  ["Roberto Silva", "Você: Combinado! Amanhã às 15h. Te espero lá!", "08:58", "Locatário · Condomínio RedeMais", "tenant", undefined, true],
 ];
 const tenantConversations: ConversationRow[] = [
   ["João Azevedo", "Você: Combinado! Amanhã às 15h. Te espero lá!", "08:58", "Locador · Condomínio RedeMais", "landlord"],
-  ["Ana Beatriz", "Enviei os documentos para a locação.", "08:42", "Anfitriã · Condomínio Inova", "host"],
 ];
 
 type ProposalData = {
@@ -2597,6 +2763,8 @@ type ProposalData = {
   startDate: string;
   duration: string;
   message: string;
+  propertyTitle?: string;
+  propertyNeighborhood?: string;
 };
 
 type SentDocument = {
@@ -2605,49 +2773,63 @@ type SentDocument = {
   url: string;
 };
 
+type ChatMessage = { text: string; sender: "me" | "partner" };
+
 function ChatHistory({
   go,
   openChat,
-  proposal,
-  document,
+  startedConversations,
+  lastMessages,
   backScreen,
   user,
 }: {
   go: (screen: Screen) => void;
-  openChat: (partner: ChatPartner, contactName?: string) => void;
-  proposal: ProposalData | null;
-  document: SentDocument | null;
+  openChat: (partner: ChatPartner, contactName?: string, property?: PropertyListing, mockTranscript?: boolean, conversationId?: string) => void;
+  startedConversations: StartedConversation[];
+  lastMessages: Record<string, { text: string; time: string }>;
   backScreen: Screen;
   user: MockUser | null;
 }) {
   const { role } = useContext(RoleContext);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "unread" | "archived">("all");
-  const baseConversations = user?.id === "joao-souza" || role === "Colega de quarto"
-    ? joaoConversations
+  const roleConversations = role === "Locatário"
+    ? tenantConversations
+    : user?.id === "joao-souza" || role === "Colega de quarto"
+      ? joaoConversations
     : role === "Anfitrião"
       ? hostConversations
       : role === "Locador"
         ? landlordConversations
         : tenantConversations;
-  const latestPreview = document
-    ? `Você: Documento · ${document.name}`
-    : proposal
-      ? `Você: Proposta · R$ ${proposal.rent.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}/mês`
-      : baseConversations[0][1];
-  const conversationList = baseConversations.map((item, index) =>
-    index === 0
-      ? [
-          item[0],
-          latestPreview,
-          proposal || document ? (document ? "09:05" : "09:02") : item[2],
-          item[3],
-          item[4],
-        ]
-      : item,
-  );
-  const visible = conversationList.filter(([name, message]) =>
-    `${name} ${message}`.toLowerCase().includes(query.toLowerCase()),
+  const relevantStartedConversations = startedConversations.filter((conversation) => {
+    if (role === "Locador" || role === "Anfitrião") return conversation.partner === "tenant";
+    if (role === "Locatário" || role === "Colega de quarto") return conversation.partner === "landlord" || conversation.partner === "host";
+    return true;
+  });
+  const startedRows: ConversationRow[] = relevantStartedConversations.map((conversation) => {
+    const otherRole = conversation.partner === "landlord" ? "Locador" : conversation.partner === "host" ? "Anfitrião" : "Locatário";
+    const context = conversation.property?.title ?? "Nova conversa";
+    const lastMessage = lastMessages[conversation.id];
+    return [conversation.contactName, lastMessage?.text ?? "Ainda não há mensagens", lastMessage?.time ?? "agora", `${otherRole} · ${context}`, conversation.partner, conversation.property?.id, false, conversation.id];
+  });
+  const seededRows: ConversationRow[] = roleConversations.filter((item) =>
+    !relevantStartedConversations.some((conversation) => conversation.contactName === item[0] && conversation.partner === item[4]),
+  ).map((item): ConversationRow => [item[0], item[1], item[2], item[3], item[4], item[5], item[6], item[7] ?? `seed:${role}:${item[4]}:${item[0]}`]);
+  const conversationList: ConversationRow[] = [
+    ...startedRows,
+    ...seededRows,
+  ].map((item): ConversationRow => {
+    const lastMessage = item[7] ? lastMessages[item[7]] : undefined;
+    return lastMessage ? [item[0], lastMessage.text, lastMessage.time, item[3], item[4], item[5], item[6], item[7]] : item;
+  });
+  const resolveProperty = (propertyId?: string) => {
+    if (!propertyId) return undefined;
+    return relevantStartedConversations.find((item) => item.property?.id === propertyId)?.property
+      ?? mockProperties.find((item) => item.id === propertyId);
+  };
+  const visible = conversationList.filter((item) =>
+    `${item[0]} ${item[1]} ${item[3]}`.toLowerCase().includes(query.toLowerCase()),
   );
   return (
     <main className="flex min-h-dvh flex-col bg-white">
@@ -2673,7 +2855,7 @@ function ChatHistory({
         </label>
         <div className="mt-3 flex gap-2">
           {[
-            ["all", "Todas　6"],
+            ["all", `Todas　${conversationList.length}`],
             ["unread", "Não lidas　1"],
             ["archived", "Arquivadas"],
           ].map(([value, label]) => (
@@ -2696,10 +2878,10 @@ function ChatHistory({
         ) : (
           visible
             .slice(0, filter === "unread" ? 1 : visible.length)
-            .map(([name, message, time, property, partner], index) => (
+            .map(([name, message, time, property, partner, propertyId, mockTranscript, conversationId], index) => (
               <button
-                key={name}
-                onClick={() => openChat(partner as ChatPartner, name)}
+                key={conversationId ?? `${partner}-${name}-${propertyId ?? index}`}
+                onClick={() => openChat(partner, name, resolveProperty(propertyId), mockTranscript, conversationId)}
                 className={`w-full border-b border-[#e7e2e9] px-5 py-3 text-left ${index === 1 ? "bg-[#fbf3ff]" : ""}`}
               >
                 <span className="flex justify-between">
@@ -2726,6 +2908,11 @@ function IndividualChat({
   go,
   partner,
   contactName,
+  property,
+  showMockConversation,
+  savedMessages,
+  onMessagesChange,
+  onLastMessage,
   proposal,
   setProposal,
   document,
@@ -2734,6 +2921,11 @@ function IndividualChat({
   go: (screen: Screen) => void;
   partner: ChatPartner;
   contactName?: string;
+  property?: PropertyListing | null;
+  showMockConversation: boolean;
+  savedMessages?: ChatMessage[];
+  onMessagesChange: (messages: ChatMessage[]) => void;
+  onLastMessage: (message: string) => void;
   proposal: ProposalData | null;
   setProposal: (proposal: ProposalData) => void;
   document: SentDocument | null;
@@ -2754,24 +2946,43 @@ function IndividualChat({
     },
   );
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [messages, setMessages] = useState(() => partner === "host"
-    ? [`Olá! Tenho interesse no quarto do Condomínio RedeMais, ${partnerName}.`, `Oi! Vamos combinar uma visita?`, "Pode ser amanhã às 15h?", "Combinado! Te espero lá!"]
-    : partner === "tenant"
-      ? [`Olá, ${partnerName}! Vi sua solicitação para o Condomínio RedeMais.`, "Oi! Tenho interesse no imóvel.", "Podemos combinar a visita?", "Sim! Amanhã às 15h."]
-      : ["Olá, João! Quer agendar uma visita ao imóvel?", "Olá! Posso visitar amanhã às 15h.", "Pode ser?", "Combinado! Amanhã às 15h. Te espero lá!"]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    if (savedMessages) return savedMessages;
+    if (!showMockConversation) return [];
+    const transcript = partner === "host"
+      ? [`Olá! Tenho interesse no quarto do Condomínio RedeMais, ${partnerName}.`, "Oi! Vamos combinar uma visita?", "Pode ser amanhã às 15h?", "Combinado! Te espero lá!"]
+      : partner === "tenant"
+        ? [`Olá, ${partnerName}! Vi sua solicitação para o Condomínio RedeMais.`, "Oi! Tenho interesse no imóvel.", "Podemos combinar a visita?", "Sim! Amanhã às 15h."]
+        : property
+          ? [`Olá, ${partnerName}! Gostaria de agendar uma visita ao imóvel ${property.title}. Ele está disponível?`, "Olá! Pode visitar amanhã às 15h.", "Perfeito, esse horário funciona para mim!", "Combinado! Te espero lá!"]
+          : [`Olá, ${partnerName}! Gostaria de agendar uma visita ao imóvel. Ele está disponível?`, "Olá! Pode visitar amanhã às 15h.", "Perfeito, esse horário funciona para mim!", "Combinado! Te espero lá!"];
+    return transcript.map((text, index): ChatMessage => ({ text, sender: index % 2 === 0 ? "me" : "partner" }));
+  });
   const send = () => {
     if (message.trim()) {
-      setMessages([...messages, message.trim()]);
+      const text = message.trim();
+      const nextMessages = [...messages, { text, sender: "me" as const }];
+      setMessages(nextMessages);
+      onMessagesChange(nextMessages);
+      onLastMessage(`Você: ${text}`);
       setMessage("");
       setRecording(false);
     }
   };
   const total = proposalDraft.rent + proposalDraft.condo + proposalDraft.iptu;
+  const proposalPropertyTitle = proposal?.propertyTitle ?? property?.title ?? "Condomínio RedeMais";
+  const proposalPropertyNeighborhood = proposal?.propertyNeighborhood ?? property?.neighborhood ?? "Ponta Negra, Natal";
   const currency = (value: number) =>
     value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   const sendProposal = (event: FormEvent) => {
     event.preventDefault();
-    setProposal(proposalDraft);
+    const nextProposal = {
+      ...proposalDraft,
+      propertyTitle: property?.title ?? "Condomínio RedeMais",
+      propertyNeighborhood: property?.neighborhood ?? "Ponta Negra, Natal",
+    };
+    setProposal(nextProposal);
+    onLastMessage(`Você: Proposta · ${currency(proposalDraft.rent)}/mês`);
     setShowProposal(false);
   };
   const uploadDocument = (file: File | undefined) => {
@@ -2784,6 +2995,7 @@ function IndividualChat({
           ? `${(file.size / 1024 / 1024).toFixed(1)} MB`
           : `${Math.max(1, Math.round(file.size / 1024))} KB`,
     });
+    onLastMessage(`Você: Documento · ${file.name}`);
   };
   return (
     <main className="flex min-h-dvh flex-col bg-[#f1f1f1]">
@@ -2800,10 +3012,10 @@ function IndividualChat({
         <button className="text-2xl">⋮</button>
       </header>
       <div className="flex-1 space-y-6 px-5 py-10">
-        {messages.map((text, index) => (
+        {messages.map(({ text, sender }, index) => (
           <div
             key={`${text}-${index}`}
-            className={`max-w-[225px] rounded-lg px-3 py-2 text-sm leading-tight ${index % 3 === 1 || index === 2 ? "mr-auto bg-[#ead0fb]" : "ml-auto bg-[#c991ed]"}`}
+            className={`max-w-[225px] rounded-lg px-3 py-2 text-sm leading-tight ${sender === "partner" ? "mr-auto bg-[#ead0fb]" : "ml-auto bg-[#c991ed]"}`}
           >
             {text}
             <small className="ml-2 text-[9px] text-[#706a73]">
@@ -2816,7 +3028,8 @@ function IndividualChat({
             <h3 className="flex items-center gap-2 text-sm font-bold text-[#29202e]">
               <img src={`${A}/6f6cd.svg`} alt="" /> Proposta de locação
             </h3>
-            <p className="mt-2 text-xs text-[#706a73]">Apartamento no Centro</p>
+            <p className="mt-2 text-xs font-medium">{proposalPropertyTitle}</p>
+            <p className="mt-0.5 text-[10px] text-[#706a73]">{proposalPropertyNeighborhood}</p>
             <p className="mt-2 text-xl font-bold">{currency(proposal.rent)} / mês</p>
             <p className="mt-1 text-[10px] text-[#706a73]">
               Condomínio {currency(proposal.condo)} · IPTU {currency(proposal.iptu)}
@@ -2878,10 +3091,7 @@ function IndividualChat({
             onClick={() => fileInputRef.current?.click()}
             className="inline-flex items-center gap-1.5 rounded-full border border-[#087080] bg-[#d5f4f7] px-3 py-1 text-xs text-[#087080]"
           >
-            <svg aria-hidden="true" className="size-5 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-              <circle cx="12" cy="7" r="4.5" />
-              <path d="M2.5 21c.3-5.2 4.1-8 9.5-8s9.2 2.8 9.5 8z" />
-            </svg>
+            <img aria-hidden="true" className="size-5 shrink-0 object-contain" src={`${A}/a044b.svg`} alt="" />
             Enviar Documento
           </button>
           <input
@@ -2934,8 +3144,8 @@ function IndividualChat({
               </button>
             </div>
             <div className="mt-3 rounded-[9px] bg-[#f3e7fa] px-2.5 py-2">
-              <b className="text-xs">Apartamento no Centro</b>
-              <small className="block text-[9px] text-[#706a73]">Proposta de locação</small>
+              <b className="block truncate text-xs">{property?.title ?? "Condomínio RedeMais"}</b>
+              <small className="block truncate text-[9px] text-[#706a73]">{property?.neighborhood ?? "Ponta Negra, Natal"} · Proposta de locação</small>
             </div>
             <label className="field mt-5">
               <span>Aluguel mensal</span>
@@ -3239,7 +3449,7 @@ function Profile({ go }: { go: (screen: Screen) => void }) {
   );
 }
 
-function LandlordAddAnnouncement({ go }: { go: (screen: Screen) => void }) {
+function LandlordAddAnnouncement({ go, onPublish }: { go: (screen: Screen) => void; onPublish: (announcement: LandlordAnnouncement) => void }) {
   const [published, setPublished] = useState(false);
   const [photos, setPhotos] = useState<string[]>([]);
   const [form, setForm] = useState({
@@ -3265,6 +3475,12 @@ function LandlordAddAnnouncement({ go }: { go: (screen: Screen) => void }) {
   };
   const submit = (event: FormEvent) => {
     event.preventDefault();
+    onPublish({
+      id: `announcement-${Date.now()}`,
+      ...form,
+      image: photos[0] ?? `${A}/f2a6e.png`,
+      paused: false,
+    });
     setPublished(true);
   };
   const input = (name: keyof typeof form, label: string, placeholder = "") => (
@@ -3352,18 +3568,27 @@ function AppRouter() {
   const { user } = useContext(UserContext);
   const { role } = useContext(RoleContext);
   const [screen, setScreen] = useState<Screen>("login");
+  const [selectedProperty, setSelectedProperty] = useState<PropertyListing>(mockProperties[0]);
   const [propertyReturnScreen, setPropertyReturnScreen] = useState<Screen>("home");
   const [chatPartner, setChatPartner] = useState<ChatPartner>("landlord");
   const [chatContactName, setChatContactName] = useState<string | undefined>();
+  const [chatProperty, setChatProperty] = useState<PropertyListing | null>(null);
+  const [showMockConversation, setShowMockConversation] = useState(false);
+  const [startedConversations, setStartedConversations] = useState<StartedConversation[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState("");
+  const [conversationLastMessages, setConversationLastMessages] = useState<Record<string, { text: string; time: string }>>({});
+  const [conversationMessages, setConversationMessages] = useState<Record<string, ChatMessage[]>>({});
   const [historyReturn, setHistoryReturn] = useState<Screen>("home");
   const [filters, setFilters] = useState(initialFilters);
   const [interestSubmitted, setInterestSubmitted] = useState(false);
+  const [rentalDeals, setRentalDeals] = useState<RentalDeal[]>(initialRentalDeals);
   const [landlordDeals, setLandlordDeals] = useState<LandlordDealStatus[]>([
     "Pendente",
     "Em andamento",
     "Concluída",
     "Em andamento",
   ]);
+  const [landlordAnnouncements, setLandlordAnnouncements] = useState<LandlordAnnouncement[]>([]);
   const [pausedProperties, setPausedProperties] = useState([false, false]);
   const [sentProposal, setSentProposal] = useState<ProposalData | null>(null);
   const [sentDocument, setSentDocument] = useState<SentDocument | null>(null);
@@ -3382,7 +3607,12 @@ function AppRouter() {
     },
   ]);
   const [hostRequestAccepted, setHostRequestAccepted] = useState(false);
-  const go = (next: Screen) => {
+  const go = (next: Screen, property?: PropertyListing, mockTranscript = false) => {
+    if (property) setSelectedProperty(property);
+    if (next === "chat") {
+      setChatProperty(property ?? null);
+      setShowMockConversation(mockTranscript);
+    }
     if (next === "property" || next === "property-roommate" || next === "property-rental") {
       setPropertyReturnScreen(screen);
     }
@@ -3393,14 +3623,30 @@ function AppRouter() {
     setScreen(next);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
-  const openChat = (partner: ChatPartner, contactName?: string) => {
+  const openChat = (partner: ChatPartner, contactName?: string, property?: PropertyListing, mockTranscript = false, conversationId?: string) => {
+    const resolvedContact = contactName ?? (partner === "landlord" ? "João Azevedo" : partner === "host" ? "Ana Beatriz" : "Gabriel Sousa");
+    const resolvedConversationId = conversationId ?? `chat:${role}:${partner}:${resolvedContact}:${property?.id ?? "sem-imovel"}`;
     setChatPartner(partner);
-    setChatContactName(contactName);
+    setChatContactName(resolvedContact);
+    if (resolvedConversationId !== activeConversationId) {
+      setSentProposal(null);
+      setSentDocument(null);
+    }
+    setActiveConversationId(resolvedConversationId);
+    if (!mockTranscript && (screen !== "chat-history" || !conversationId)) {
+      const conversation = {
+        id: resolvedConversationId,
+        partner,
+        contactName: resolvedContact,
+        property: property ?? null,
+      };
+      setStartedConversations((current) => [conversation, ...current.filter((item) => item.id !== conversation.id)]);
+    }
     if (screen !== "chat-history" && screen !== "chat") {
       const menuScreens: Screen[] = ["home", "profile", "roommate", "proposals", "tenant-business", "landlord-business", "host-requests", "host-offer"];
       setHistoryReturn(menuScreens.includes(screen) ? screen : "home");
     }
-    go("chat");
+    go("chat", property, mockTranscript);
   };
   if (screen === "login") return <Login go={go} />;
   if (screen === "signup") return <Signup go={go} />;
@@ -3409,12 +3655,13 @@ function AppRouter() {
   if (screen === "roommate") return role === "Anfitrião"
     ? <HostOffer go={go} properties={hostProperties} />
     : <Roommate go={go} />;
-  if (screen === "map") return <MapView go={go} />;
+  if (screen === "map") return <MapView go={go} openChat={openChat} />;
   if (screen === "property" || screen === "property-roommate")
     return (
       <PropertyDetail
         onBack={() => go(propertyReturnScreen)}
         kind="roommate"
+        property={selectedProperty.purpose === "Dividir" ? selectedProperty : mockProperties.find((item) => item.purpose === "Dividir")!}
         onConfirm={() => {
           setInterestSubmitted(true);
           go("proposals");
@@ -3426,14 +3673,19 @@ function AppRouter() {
       <PropertyDetail
         onBack={() => go(propertyReturnScreen)}
         kind="rental"
+        property={selectedProperty.purpose === "Alugar" ? selectedProperty : mockProperties.find((item) => item.purpose === "Alugar")!}
         onConfirm={() => {
+          setRentalDeals((current) => [
+            { id: `request-${selectedProperty.id}`, property: selectedProperty, status: "Em andamento" },
+            ...current.filter((deal) => deal.property.id !== selectedProperty.id),
+          ]);
           setInterestSubmitted(true);
           go("tenant-business");
         }}
       />
     );
   if (screen === "proposals") return <Proposals go={go} openChat={openChat} interestSubmitted={interestSubmitted} />;
-  if (screen === "tenant-business") return <TenantBusiness go={go} openChat={openChat} />;
+  if (screen === "tenant-business") return <TenantBusiness go={go} openChat={openChat} deals={rentalDeals} />;
   if (screen === "host-offer") return <HostOffer go={go} properties={hostProperties} />;
   if (screen === "host-add-property")
     return (
@@ -3459,23 +3711,30 @@ function AppRouter() {
         openChat={openChat}
         deals={landlordDeals}
         setDeals={setLandlordDeals}
+        announcements={landlordAnnouncements}
+        setAnnouncements={setLandlordAnnouncements}
         paused={pausedProperties}
         setPaused={setPausedProperties}
         onNewAnnouncement={() => go("landlord-add")}
       />
     );
-  if (screen === "landlord-add") return <LandlordAddAnnouncement go={go} />;
+  if (screen === "landlord-add") return <LandlordAddAnnouncement go={go} onPublish={(announcement) => setLandlordAnnouncements((current) => [announcement, ...current])} />;
   if (screen === "landlord-edit") return <LandlordEdit go={go} />;
   if (screen === "landlord-profile")
     return <Profile go={(next) => go(next === "home" ? "landlord-business" : next)} />;
   if (screen === "chat-history")
-    return <ChatHistory go={go} openChat={openChat} proposal={sentProposal} document={sentDocument} backScreen={historyReturn} user={user} />;
+    return <ChatHistory go={go} openChat={openChat} startedConversations={startedConversations} lastMessages={conversationLastMessages} backScreen={historyReturn} user={user} />;
   if (screen === "chat")
     return (
       <IndividualChat
         go={go}
         partner={chatPartner}
         contactName={chatContactName}
+        property={chatProperty}
+        showMockConversation={showMockConversation}
+        savedMessages={conversationMessages[activeConversationId]}
+        onMessagesChange={(messages) => setConversationMessages((current) => ({ ...current, [activeConversationId]: messages }))}
+        onLastMessage={(text) => setConversationLastMessages((current) => ({ ...current, [activeConversationId]: { text, time: "agora" } }))}
         proposal={sentProposal}
         setProposal={setSentProposal}
         document={sentDocument}
@@ -3488,13 +3747,7 @@ function AppRouter() {
       filters={filters}
       setFilters={setFilters}
       clearFilters={() =>
-        setFilters({
-          ...initialFilters,
-          types: [],
-          rooms: "Qualquer",
-          baths: "Qualquer",
-          garage: "Qualquer",
-        })
+        setFilters(clearedFilters)
       }
     />
   );
@@ -3536,3 +3789,5 @@ export default function App() {
   };
   return <RoleContext.Provider value={{ role, setRole }}><UserContext.Provider value={{ user, users, setUser, registerUser }}><AppRouter /></UserContext.Provider></RoleContext.Provider>;
 }
+
+
